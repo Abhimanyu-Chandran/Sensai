@@ -33,29 +33,41 @@ export const generateAIInsights = async (industry) => {
     const result = await model.generateContent(prompt);
     const response = result.response;
     const text = response.text();
+
+    const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
+    return JSON.parse(cleanedText);
 };
 
-export async function industryInsights() {
+export async function getIndustryInsights() {
     const {userId} = await auth();
-    if (!userId) throw new Error("Unauthorized");
+    if (!userId) {
+        throw new Error("Unauthorized");
+    }
 
-    // Import checkUser function
-    const {checkUser} = await import("@/lib/checkUser");
+    const user = await db.user.findUnique({
+        where: {
+            clerkUserId: userId,
+        },
+        include: {
+            industryInsight: true,
+        },
+    });
 
-    // This will create a user if one doesn't exist
-    const user = await checkUser();
+    // // Import checkUser function
+    // const {checkUser} = await import("@/lib/checkUser");
+    // // This will create a user if one doesn't exist
+    // const user = await checkUser();
 
     if (!user) throw new Error("User not found");
 
     if (!user.industryInsight) {
         const insights = await generateAIInsights(user.industry);
 
-        const industryInsights = await db.industryInsight.create({
+        return await db.industryInsight.create({
             data: {
                 industry: user.industry, ...insights, nextUpdate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             },
         });
-        return industryInsight;
     }
     return user.industryInsight;
 }

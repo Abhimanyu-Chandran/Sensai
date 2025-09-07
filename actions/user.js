@@ -2,6 +2,7 @@
 
 import {auth} from "@clerk/nextjs/server";
 import {db} from "@/lib/prisma";
+import {generateAIInsights} from "@/actions/dashboard";
 
 export async function updateUser(data) {
     const {userId} = await auth();
@@ -9,11 +10,16 @@ export async function updateUser(data) {
         throw new Error("Unauthorized");
     }
 
-    // Import checkUser function
-    const {checkUser} = await import("@/lib/checkUser");
+    const user = await db.user.findUnique({
+        where: {
+            clerkUserId: userId,
+        },
+    });
 
-    // This will create a user if one doesn't exist
-    const user = await checkUser();
+    // // Import checkUser function
+    // const {checkUser} = await import("@/lib/checkUser");
+    // // This will create a user if one doesn't exist
+    // const user = await checkUser();
 
     if (!user) throw new Error("Failed to get or create user");
 
@@ -27,16 +33,11 @@ export async function updateUser(data) {
             });
             // If the industry doesn't exist, create it with default values - will replace it with AI later
             if (!industryInsight) {
-                industryInsight = await tx.industryInsight.create({
+                const insights = await generateAIInsights(data.industry);
+
+                industryInsight = await db.industryInsight.create({
                     data: {
-                        industry: data.industry,
-                        salaryRanges: [],
-                        growthRate: 0,
-                        demandLevel: "MEDIUM",
-                        topSkills: [],
-                        marketOutlook: "NEUTRAL",
-                        keyTrends: [],
-                        recommendedSkills: [],
+                        industry: data.industry, ...insights,
                         nextUpdate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
                     },
                 });
