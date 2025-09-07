@@ -34,10 +34,16 @@ export async function updateUser(data) {
             // If the industry doesn't exist, create it with default values - will replace it with AI later
             if (!industryInsight) {
                 const insights = await generateAIInsights(data.industry);
+                const normalized = {
+                    ...insights,
+                    demandLevel: insights?.demandLevel ? String(insights.demandLevel).toUpperCase() : undefined,
+                    marketOutlook: insights?.marketOutlook ? String(insights.marketOutlook).toUpperCase() : undefined,
+                };
 
-                industryInsight = await db.industryInsight.create({
+                industryInsight = await tx.industryInsight.create({
                     data: {
-                        industry: data.industry, ...insights,
+                        industry: data.industry,
+                        ...normalized,
                         nextUpdate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
                     },
                 });

@@ -1,5 +1,5 @@
-import React, {Suspense} from 'react'
 import {BarLoader} from "react-spinners";
+import React, {Suspense} from 'react'
 
 const Layout = ({children}) => {
     return (<div className="px-5">

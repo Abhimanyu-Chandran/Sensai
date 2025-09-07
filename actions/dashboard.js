@@ -5,9 +5,7 @@ import {auth} from "@clerk/nextjs/server";
 import {GoogleGenerativeAI} from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
-})
+const model = genAI.getGenerativeModel({model: "gemini-1.5-flash",});
 
 export const generateAIInsights = async (industry) => {
     const prompt = `
@@ -33,7 +31,6 @@ export const generateAIInsights = async (industry) => {
     const result = await model.generateContent(prompt);
     const response = result.response;
     const text = response.text();
-
     const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
     return JSON.parse(cleanedText);
 };
@@ -47,8 +44,7 @@ export async function getIndustryInsights() {
     const user = await db.user.findUnique({
         where: {
             clerkUserId: userId,
-        },
-        include: {
+        }, include: {
             industryInsight: true,
         },
     });
@@ -62,12 +58,20 @@ export async function getIndustryInsights() {
 
     if (!user.industryInsight) {
         const insights = await generateAIInsights(user.industry);
+        const normalized = {
+            ...insights,
+            demandLevel: insights?.demandLevel ? String(insights.demandLevel).toUpperCase() : undefined,
+            marketOutlook: insights?.marketOutlook ? String(insights.marketOutlook).toUpperCase() : undefined,
+        };
 
-        return await db.industryInsight.create({
+        const industryInsight = await db.industryInsight.create({
             data: {
-                industry: user.industry, ...insights, nextUpdate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                industry: user.industry,
+                ...normalized,
+                nextUpdate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             },
         });
+        return industryInsight;
     }
     return user.industryInsight;
 }
